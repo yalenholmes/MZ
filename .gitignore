@@ -1,0 +1,64 @@
+# API Keys & Secrets
+.env
+
+# Data files
+data/
+memory.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+
+# API Keys & Secrets
+.env
+*.env
+.key
+*.pem
+secrets/
+
+# Personal data
+data/
+memory.json
+conversations/
+user_data/
+personal/
+
+# Logs (might contain sensitive info)
+logs/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
