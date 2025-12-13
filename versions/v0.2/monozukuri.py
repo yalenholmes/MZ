@@ -209,11 +209,68 @@ def handle_task_command(args, memory):
 	# /task add
 	if action == "add":
 		if len(args) < 2:
-			return "Usage: /task add <task description>"
+			return "Usage: /task add <description> [priority:high/medium/low] [category:name] [due:YYYY-MM-DD] [reason:text]"
 		
-		content = args[1]
-		task = task_manager.add_task(memory, content)
-		return f"✓ Task added: {content}\nID: {task['id']}"
+		# Parse the input
+		full_input = args[1]  # e.g., "Finish CS50P priority:high category:learning"
+		
+		# Extract properties if they exist
+		priority = None
+		category = None
+		due_date = None
+		reasoning = None
+		
+		# Split by spaces to find properties
+		parts = full_input.split()
+		content_parts = []
+		
+		for part in parts:
+			if ":" in part:
+				# This is a property (e.g., "priority:high")
+				key, value = part.split(":", 1)
+				
+				if key == "priority":
+					priority = value
+				elif key == "category":
+					category = value
+				elif key == "due":
+					due_date = value
+				elif key == "reason":
+					reasoning = value
+			else:
+				# This is part of the task description
+				content_parts.append(part)
+		
+		# Rebuild the content (without properties)
+		content = " ".join(content_parts)
+		
+		if not content:
+			return "Error: Task description cannot be empty"
+		
+		# Add the task with all properties
+		task = task_manager.add_task(
+			memory, 
+			content, 
+			priority=priority,
+			category=category,
+			due_date=due_date,
+			reasoning=reasoning
+		)
+		
+		# Build response message
+		response = f"✓ Task added: {content}\n"
+		response += f"  ID: {task['id']}\n"
+		
+		if priority:
+			response += f"  Priority: {priority.upper()}\n"
+		if category:
+			response += f"  Category: {category}\n"
+		if due_date:
+			response += f"  Due: {due_date}\n"
+		if reasoning:
+			response += f"  Reasoning: {reasoning}\n"
+		
+		return response.strip()
 	
 	# /task list
 	elif action == "list":
@@ -225,10 +282,20 @@ def handle_task_command(args, memory):
 		result = f"You have {len(tasks)} active task(s):\n\n"
 		for task in tasks:
 			priority = task.get('priority', 'none')
-			result += f"[{priority.upper() if priority else 'NONE'}] {task['content']}\n"
+			priority_display = f"[{priority.upper()}]" if priority else "[NONE]"
+			
+			result += f"{priority_display} {task['content']}\n"
 			result += f"  ID: {task['id']}\n"
+			
 			if task.get('category'):
 				result += f"  Category: {task['category']}\n"
+			
+			if task.get('due_date'):
+				result += f"  Due: {task['due_date']}\n"
+			
+			if task.get('priority_reasoning'):
+				result += f"  Why? {task['priority_reasoning']}\n"
+			
 			result += "\n"
 		
 		return result.strip()
@@ -261,7 +328,6 @@ def handle_task_command(args, memory):
 	
 	else:
 		return f"Unknown task action: {action}\nAvailable: add, list, done, delete"
-
 # --------------------------------------------------
 # Core agent behavior
 # --------------------------------------------------
