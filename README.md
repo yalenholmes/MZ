@@ -20,9 +20,9 @@ as a portfolio piece that demonstrates my ability to ship real
 projects.
 
 MZ represents my commitment to:
-- Learning by building (not just tutorials)
-- Long-term thinking (this is a multi-year project)
-- Public development (documenting the entire journey)
+- Learning by building 
+- Long-term thinking
+- Public development
 
 ## Current Capabilities (v0.1)
 
