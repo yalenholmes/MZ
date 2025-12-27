@@ -1,0 +1,25 @@
+# MZ Configuration File
+
+tasks:
+  valid_priorities:
+    - high
+    - medium
+    - low
+    - urgent
+  valid_categories:
+    - learning
+    - job_search
+    - mz_development
+    - personal
+  default_priority: medium
+
+api:
+  model: claude-sonnet-4-20250514
+  max_tokens: 1024
+  timeout: 30
+
+paths:
+  memory: ../../data/memory.json
+
+logging:
+  level: INFO

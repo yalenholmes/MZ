@@ -4,6 +4,10 @@ Handles CRUD operations for tasks
 """
 import uuid
 from datetime import datetime
+from config import load_config
+
+# Load configuration
+config = load_config()
 
 # Define function that generated unique ids
 def generate_task_id():
@@ -24,8 +28,8 @@ def validate_task_input(content, priority, category, due_date):
         List if errors messages (empty list if valid)
     """
     # Define valid value
-    VALID_PRIORITIES = ["high", "medium", "low"]
-    VALID_CATEGORIES = ["learning","job_search","mz_development","personal"]
+    VALID_PRIORITIES = config['tasks']['valid_priorities']
+    VALID_CATEGORIES = config['tasks']['valid_categories']
 
     # Create empty error list
     errors = []
