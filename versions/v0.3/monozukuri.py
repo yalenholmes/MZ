@@ -4,11 +4,23 @@ from dotenv import load_dotenv
 import anthropic
 import task_manager
 from logger import setup_logging
+from cli import parse_args
 
 # --------------------------------------------------
 # Setup logging
 # --------------------------------------------------
-logger = setup_logging()
+
+# Parse CLI args first 
+args = parse_args()
+
+# Setup logging with CLI-specified config
+logger = setup_logging(args.config)
+
+# If debug flag set, override log level
+if args.debug:
+	import logging
+	logging.getLogger().setLevel(logging.DEBUG)
+	logger.info("Debug mode enabled via CLI. flag")
 
 # --------------------------------------------------
 # Load environment variables
@@ -371,22 +383,29 @@ def think(input_text, memory):
 # --------------------------------------------------
 
 def main():
-	print("MZ v0.1 initialized.")
-
+	# Parse command-line arguments
+	args = parse_args()
+	
+	# If debug flag is set, update logging level
+	if args.debug:
+		import logging
+		logging.getLogger().setLevel(logging.DEBUG)
+		logger.info("Debug mode enabled via CLI flag")
+	
+	print("MZ v0.3 initialized.")
 	memory = load_memory()
-
+	
 	while True:
 		user_input = input("You: ")
 		
-        # Skip empty input
 		if not user_input.strip():
 			continue
 		
 		response, memory = think(user_input, memory)
 		print("MZ:", response)
-
+		
 		save_memory(memory)
-
+		
 if __name__ == "__main__":
 	main()
 

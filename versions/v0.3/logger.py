@@ -5,7 +5,7 @@ import logging
 import os
 from config import load_config
 
-def setup_logging():
+def setup_logging(config_path="config.yaml"):
     """
     Setup logging system based on config.
     
@@ -13,7 +13,7 @@ def setup_logging():
         Configured logger object
     """
     # Load config
-    config = load_config()
+    config = load_config(config_path)
     log_config = config['logging']
     
     # Get log level from config

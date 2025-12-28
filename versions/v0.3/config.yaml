@@ -1,5 +1,7 @@
 # MZ Configuration File
 
+version: 0.3.0
+
 tasks:
   valid_priorities:
     - high
