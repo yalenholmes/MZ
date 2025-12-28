@@ -22,4 +22,6 @@ paths:
   memory: ../../data/memory.json
 
 logging:
-  level: INFO
+  level: INFO # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: logs/mz.log

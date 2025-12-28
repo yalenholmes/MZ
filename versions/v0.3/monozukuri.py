@@ -2,16 +2,13 @@ import json
 import os
 from dotenv import load_dotenv
 import anthropic
-import task_manager 
+import task_manager
+from logger import setup_logging
 
 # --------------------------------------------------
-# Debug mode (enable during development)
+# Setup logging
 # --------------------------------------------------
-DEBUG = True
-
-def debug_log(message):
-	if DEBUG:
-		print(f"[DEBUG] {message}")
+logger = setup_logging()
 
 # --------------------------------------------------
 # Load environment variables
@@ -23,7 +20,7 @@ ENV_PATH = os.path.join(PROJECT_ROOT, ".env")
 
 # Load .env from project root
 load_dotenv(ENV_PATH) 
-debug_log(f"Looking for .env at: {ENV_PATH}")
+logger.info(f"Looking for .env at: {ENV_PATH}")
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
@@ -32,21 +29,21 @@ if not ANTHROPIC_API_KEY:
 	print("ERROR: ANTHROPIC_API_KEY not found in .env file!")
 	exit(1)
 else:
-	debug_log("API key loaded successfully.")
+	logger.info("API key loaded successfully.")
 
 # --------------------------------------------------
 # Initialize Claude client
 # --------------------------------------------------
 
 claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-debug_log("Claude client initialized.")
+logger.info("Claude client initialized.")
 
 # --------------------------------------------------
 # Memory handling (safe + self-healing)
 # --------------------------------------------------
 
 MEMORY_PATH = os.path.join(PROJECT_ROOT, "data", "memory.json")
-debug_log(f"Memory path: {MEMORY_PATH}")
+logger.info(f"Memory path: {MEMORY_PATH}")
 
 DEFAULT_MEMORY = {
 	"conversations": [],
@@ -54,45 +51,45 @@ DEFAULT_MEMORY = {
 }
 
 def validate_memory_structure(data):
-    """
-    Deep validation: ensures the memory file has the right structure and types.
-    Returns True if valid, False otherwise.
-    """
+	"""
+	Deep validation: ensures the memory file has the right structure and types.
+	Returns True if valid, False otherwise.
+	"""
 
-    # Must contain 'conversations'
-    if 'conversations' not in data:
-        debug_log("Validation failed: missing 'conversations' key.")
-        return False
-
-    # 'conversations' must be a list
-    if not isinstance(data["conversations"], list):
-        debug_log("Validation failed: 'conversations' must be a list.")
-        return False
-
-    # Must contain 'tasks' 
-    if 'tasks' not in data:
-        debug_log("Validation failed: missing 'tasks' key.")
-        return False
-
-    # 'tasks' must be a list
-    if not isinstance(data["tasks"], list):
-        debug_log("Validation failed: 'tasks' must be a list.")
-        return False
-
-    return True
+	# Must contain 'conversations'
+	if 'conversations' not in data:
+		logger.debug("Validation failed: missing 'conversations' key.")
+		return False
+	
+	# 'conversations' must be a list
+	if not isinstance(data["conversations"], list):
+		logger.debug("Validation failed: 'conversations' must be a list.")
+		return False
+	
+    # Must contain 'tasks'
+	if 'tasks' not in data:
+		logger.debug("Validation failed: missing 'tasks' key.")
+		return False
+	
+	# 'tasks' must be a list
+	if not isinstance(data["tasks"], list):
+		logger.debug("Validation failed: 'tasks' must be a list.")
+		return False
+	
+	return True
 
 def load_memory():
 	"""Load memory with multiple layers of validation."""
 
 	# If file doesn't exist -> create
 	if not os.path.exists(MEMORY_PATH):
-		debug_log("memory.json not found - creating new memory file.")
+		logger.info("memory.json not found - creating new memory file.")
 		save_memory(DEFAULT_MEMORY)
 		return DEFAULT_MEMORY
 	
 	# If the file exists but is empty -> rebuild
 	if os.path.getsize(MEMORY_PATH) == 0:
-		debug_log("memory.json is empty - repairing.")
+		logger.info("memory.json is empty - repairing.")
 		save_memory(DEFAULT_MEMORY)
 		return DEFAULT_MEMORY
 	
@@ -100,15 +97,15 @@ def load_memory():
 	try:
 		with open(MEMORY_PATH, "r") as f:
 			data = json.load(f)
-			debug_log("memory.json loaded successfully.")
+			logger.info("memory.json loaded successfully.")
 	except json.JSONDecodeError:
-		debug_log("memory.json was empty or corrupted. Repairing memory file.")
+		logger.info("memory.json was empty or corrupted. Repairing memory file.")
 		save_memory(DEFAULT_MEMORY)
 		return DEFAULT_MEMORY
 	
 	# Deep structural validation
 	if not validate_memory_structure(data):
-		debug_log("memory.json failed structure validation - rebuilding.")
+		logger.info("memory.json failed structure validation - rebuilding.")
 		save_memory(DEFAULT_MEMORY)
 		return DEFAULT_MEMORY
 	
@@ -118,7 +115,7 @@ def load_memory():
 def save_memory(memory): 
 	with open(MEMORY_PATH, "w") as f:
 		json.dump(memory, f, indent=4)
-	debug_log("Memory saved successfully.")
+	logger.info("Memory saved successfully.")
 
 # --------------------------------------------------
 # Claude API integration
@@ -134,7 +131,7 @@ def ask_claude(conversation_history):
 	Returns:
 		Claude's response as a string
 	"""
-	debug_log(f"Sending {len(conversation_history)} messages to Claude...")
+	logger.info(f"Sending {len(conversation_history)} messages to Claude...")
 	
 	try:
 		# Create a system prompt that defines MZ's personality
@@ -158,12 +155,12 @@ Keep responses concise unless asked for detail. You're currently in v0.1 - early
 		
 		# Extract the text response
 		response_text = response.content[0].text
-		debug_log(f"Received response from Claude ({len(response_text)} chars)")
+		logger.info(f"Received response from Claude ({len(response_text)} chars)")
 		
 		return response_text
 		
 	except Exception as e:
-		debug_log(f"Error calling Claude API: {e}")
+		logger.info(f"Error calling Claude API: {e}")
 		return f"Sorry, I encountered an error: {str(e)}"
 
 # --------------------------------------------------
@@ -171,25 +168,26 @@ Keep responses concise unless asked for detail. You're currently in v0.1 - early
 # --------------------------------------------------
 
 def parse_command(user_input):
-    """
-    Check if user input is a command (starts with /)
+	"""
+	Check if user input is a command (starts with /)
+	
+	Returns:
+		(command_name, args) or (None, None) if not a command
+	"""
+	if not user_input.startswith("/"):
+		return None, None
+	
+	# Split into parts: "/task add Do something" -> ["task", "add", "Do", "something"]
+	parts = user_input[1:].split(None, 2)  # Remove /, split into max 3 parts
+	
+	if len(parts) == 0:
+		return None, None
+	
+	command = parts[0]  # e.g., "task"
+	args = parts[1:] if len(parts) > 1 else []  # e.g., ["add", "Do something"]
+	
+	return command, args
 
-    Returns:
-        (command_name, args) or (None, None) if not a command
-    """
-    if not user_input.startswith("/"):
-        return None, None
-
-    # Split into parts: "/task add Do something" -> ["task", "add", "Do", "something"]
-    parts = user_input[1:].split(None, 2) # Remove /, split into 3 max parts
-
-    if len(parts) == 0:
-        return None, None
-
-    command = parts[0] # e.g., "task"
-    args = parts[1:] if len(parts) > 1 else [] # e.g., ["add", "Do something"]
-
-    return command, args
 
 def handle_task_command(args, memory):
 	"""
@@ -212,21 +210,19 @@ def handle_task_command(args, memory):
 			return "Usage: /task add <description> [priority:high/medium/low] [category:name] [due:YYYY-MM-DD] [reason:text]"
 		
 		# Parse the input
-		full_input = args[1]  # e.g., "Finish CS50P priority:high category:learning"
+		full_input = args[1]
 		
-		# Extract properties if they exist
+		# Extract properties
 		priority = None
 		category = None
 		due_date = None
 		reasoning = None
 		
-		# Split by spaces to find properties
 		parts = full_input.split()
 		content_parts = []
 		
 		for part in parts:
 			if ":" in part:
-				# This is a property (e.g., "priority:high")
 				key, value = part.split(":", 1)
 				
 				if key == "priority":
@@ -238,16 +234,14 @@ def handle_task_command(args, memory):
 				elif key == "reason":
 					reasoning = value
 			else:
-				# This is part of the task description
 				content_parts.append(part)
 		
-		# Rebuild the content (without properties)
 		content = " ".join(content_parts)
 		
 		if not content:
 			return "Error: Task description cannot be empty"
 		
-		# Add the task with all properties
+		# Add the task
 		task = task_manager.add_task(
 			memory, 
 			content, 
@@ -257,7 +251,10 @@ def handle_task_command(args, memory):
 			reasoning=reasoning
 		)
 		
-		# Build response message
+		if task is None:
+			return "Failed to add task (validation errors printed above)"
+		
+		# Build response
 		response = f"✓ Task added: {content}\n"
 		response += f"  ID: {task['id']}\n"
 		
@@ -328,45 +325,46 @@ def handle_task_command(args, memory):
 	
 	else:
 		return f"Unknown task action: {action}\nAvailable: add, list, done, delete"
+
 # --------------------------------------------------
 # Core agent behavior
 # --------------------------------------------------
 
 def think(input_text, memory):
-	debug_log(f"Thinking about user input: {input_text}")
+    logger.info(f"Thinking about user input: {input_text}")
 
-	if input_text.lower() == "exit":
-		debug_log("Exit command received.")
-		return "Goodbye!", memory
-	
-	# Check if this is a command
-	command, args = parse_command(input_text)
-	
-	if command == "task":
-		# Handle task commands directly
-		response = handle_task_command(args, memory)
-		return response, memory
-	
-	# Not a command, treat as normal conversation
-	
-	# Add user message to conversation history
-	memory["conversations"].append({
-		"role": "user",
-		"content": input_text
-	})
+    if input_text.lower() == "exit":
+        logger.info("Exit command received.")
+        return "Goodbye!", memory
 
-	# Get intelligent response from Claude
-	response = ask_claude(memory["conversations"])
-	
-	# Add assistant response to conversation history
-	memory["conversations"].append({
-		"role": "assistant",
-		"content": response
-	})
+    # Check if this is a command
+    command, args = parse_command(input_text)
 
-	debug_log(f"Stored conversation turn. Total messages: {len(memory['conversations'])}")
+    if command == "task":
+        # Handle task commands directly
+        response = handle_task_command(args, memory)
+        return response, memory
 
-	return response, memory
+    # Not a command, treat as normal conversation
+
+    # Add user message to conversation history
+    memory["conversations"].append({
+        "role": "user",
+        "content": input_text
+    })
+
+    # Get intelligent response from Claude
+    response = ask_claude(memory["conversations"])
+
+    # Add assistant response to conversation history
+    memory["conversations"].append({
+        "role": "assistant",
+        "content": response
+    })
+
+    logger.info(f"Stored conversation turn. Total messages: {len(memory['conversations'])}")
+
+    return response, memory
 
 # --------------------------------------------------
 # Main loop
@@ -379,6 +377,11 @@ def main():
 
 	while True:
 		user_input = input("You: ")
+		
+        # Skip empty input
+		if not user_input.strip():
+			continue
+		
 		response, memory = think(user_input, memory)
 		print("MZ:", response)
 
@@ -386,3 +389,4 @@ def main():
 
 if __name__ == "__main__":
 	main()
+
