@@ -5,6 +5,7 @@ import anthropic
 import task_manager
 from logger import setup_logging
 from cli import parse_args
+from intent_detector import is_task_intent
 
 # --------------------------------------------------
 # Setup logging
@@ -357,8 +358,14 @@ def think(input_text, memory):
         response = handle_task_command(args, memory)
         return response, memory
 
-    # Not a command, treat as normal conversation
-
+    # Check if this is a natural language task
+    if is_task_intent(input_text):
+        logger.info("Detected task intent in natural language")
+        # For now, just acknowledge it
+        response = f"I detected you want to create a task: '{input_text}'\n"
+        response += "Natural language task creation coming in v0.4.2!"
+        return response, memory
+		
     # Add user message to conversation history
     memory["conversations"].append({
         "role": "user",
